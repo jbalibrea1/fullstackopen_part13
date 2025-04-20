@@ -2,57 +2,41 @@ const router = require('express').Router();
 
 const { Blog } = require('../models');
 
-const blogFinder = async (req, res, next) => {
+const blogFinder = async (req, _res, next) => {
   req.blog = await Blog.findByPk(req.params.id);
   next();
 };
 
-router.get('/', async (_req, res) => {
-  try {
-    const blogs = await Blog.findAll();
-    console.log(JSON.stringify(blogs, null, 2));
-    return res.json(blogs);
-  } catch (error) {
-    return res.status(500).json({ error });
+router.get('/', async (_req, res, next) => {
+  const blogs = await Blog.findAll();
+  console.log(JSON.stringify(blogs, null, 2));
+  return res.json(blogs);
+});
+
+router.post('/', async (req, res, next) => {
+  const blog = await Blog.create(req.body);
+  console.log(JSON.stringify(blog, null, 2));
+  return res.json(blog);
+});
+
+router.delete('/:id', blogFinder, async (req, res, next) => {
+  if (req.blog) {
+    await req.blog.destroy();
+    console.log(JSON.stringify(req.blog, null, 2));
+    return res.json({ message: 'Blog deleted successfully', blog: req.blog });
+  } else {
+    return res.status(404).end();
   }
 });
 
-router.post('/', async (req, res) => {
-  try {
-    const blog = await Blog.create(req.body);
-    console.log(JSON.stringify(blog, null, 2));
-    return res.json(blog);
-  } catch (error) {
-    return res.status(400).json({ error });
-  }
-});
-
-router.delete('/:id', blogFinder, async (req, res) => {
-  try {
-    if (req.blog) {
-      await req.blog.destroy();
-      console.log(JSON.stringify(req.blog, null, 2));
-      return res.json({ message: 'Blog deleted successfully', blog: req.blog });
-    } else {
-      return res.status(404).end();
-    }
-  } catch (error) {
-    return res.status(400).json({ error });
-  }
-});
-
-router.put('/:id', blogFinder, async (req, res) => {
-  try {
-    if (req.blog) {
-      const { likes } = req.body;
-      req.blog.likes = likes;
-      await req.blog.save();
-      return res.json(req.blog);
-    } else {
-      return res.status(404).end();
-    }
-  } catch (error) {
-    return res.status(400).json({ error });
+router.put('/:id', blogFinder, async (req, res, next) => {
+  if (req.blog) {
+    const { likes } = req.body;
+    req.blog.likes = likes;
+    await req.blog.save();
+    return res.json(req.blog);
+  } else {
+    return res.status(404).end();
   }
 });
 
