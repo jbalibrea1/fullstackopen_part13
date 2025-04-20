@@ -2,6 +2,11 @@ const router = require('express').Router();
 
 const { Blog } = require('../models');
 
+const blogFinder = async (req, res, next) => {
+  req.blog = await Blog.findByPk(req.params.id);
+  next();
+};
+
 router.get('/', async (_req, res) => {
   try {
     const blogs = await Blog.findAll();
@@ -22,15 +27,27 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', blogFinder, async (req, res) => {
   try {
-    const id = req.params.id;
-    const blog = await Blog.findByPk(id);
+    if (req.blog) {
+      await req.blog.destroy();
+      console.log(JSON.stringify(req.blog, null, 2));
+      return res.json({ message: 'Blog deleted successfully', blog: req.blog });
+    } else {
+      return res.status(404).end();
+    }
+  } catch (error) {
+    return res.status(400).json({ error });
+  }
+});
 
-    if (blog) {
-      await blog.destroy();
-      console.log(JSON.stringify(blog, null, 2));
-      return res.json({ message: 'Blog deleted successfully', blog });
+router.put('/:id', blogFinder, async (req, res) => {
+  try {
+    if (req.blog) {
+      const { likes } = req.body;
+      req.blog.likes = likes;
+      await req.blog.save();
+      return res.json(req.blog);
     } else {
       return res.status(404).end();
     }
