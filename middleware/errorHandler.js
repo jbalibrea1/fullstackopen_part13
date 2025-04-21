@@ -1,5 +1,6 @@
 const errorHandler = (error, _req, res, next) => {
   console.error(error.message);
+  console.error('ERROR NAME --->', error.name);
 
   if (error.name === 'CastError') {
     return res.status(400).send({ error: 'malformatted id' });
