@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { Blog, User } = require('../models');
 
 const { SECRET } = require('../util/config');
+const { Op } = require('sequelize');
 
 const tokenExtractor = (req, res, next) => {
   const authorization = req.get('authorization');
@@ -25,19 +26,30 @@ const blogFinder = async (req, _res, next) => {
   next();
 };
 
-router.get('/', async (_req, res, next) => {
+router.get('/', async (req, res) => {
+  const where = {};
+
+  if (req.query.search) {
+    where[Op.or] = [
+      { title: { [Op.iLike]: `%${req.query.search}%` } },
+      { author: { [Op.iLike]: `%${req.query.search}%` } }
+    ];
+  }
+
   const blogs = await Blog.findAll({
     attributes: { exclude: ['userId'] },
     include: {
       model: User,
       attributes: ['name']
-    }
+    },
+    where,
+    order: [['likes', 'DESC']]
   });
   console.log(JSON.stringify(blogs, null, 2));
   return res.json(blogs);
 });
 
-router.post('/', tokenExtractor, async (req, res, next) => {
+router.post('/', tokenExtractor, async (req, res) => {
   const user = await User.findByPk(req.decodedToken.id);
   const blog = await Blog.create({
     ...req.body,
@@ -47,7 +59,7 @@ router.post('/', tokenExtractor, async (req, res, next) => {
   return res.json(blog);
 });
 
-router.delete('/:id', blogFinder, tokenExtractor, async (req, res, next) => {
+router.delete('/:id', blogFinder, tokenExtractor, async (req, res) => {
   if (!req.blog) {
     return res.status(404).end();
   }
@@ -63,7 +75,7 @@ router.delete('/:id', blogFinder, tokenExtractor, async (req, res, next) => {
   return res.json({ message: 'Blog deleted successfully', blog: req.blog });
 });
 
-router.put('/:id', blogFinder, async (req, res, next) => {
+router.put('/:id', blogFinder, async (req, res) => {
   if (req.blog) {
     const { likes } = req.body;
     req.blog.likes = likes;
