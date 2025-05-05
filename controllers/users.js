@@ -48,4 +48,38 @@ router.put('/:username', async (req, res) => {
   res.json(userData);
 });
 
+router.get('/:id', async (req, res) => {
+  const { id } = req.params;
+
+  const where = {};
+
+  if (req.query.read) {
+    where.read = req.query.read === 'true';
+  }
+
+  const user = await User.findByPk(id, {
+    attributes: { exclude: ['passwordHash'] },
+    include: [
+      {
+        model: Blog,
+        as: 'readings',
+        attributes: {
+          exclude: ['userId', 'createdAt', 'updatedAt']
+        },
+        through: {
+          attributes: ['id', 'read'],
+          as: 'readinglists',
+          where
+        }
+      }
+    ]
+  });
+
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  res.json(user);
+});
+
 module.exports = router;
