@@ -19,6 +19,7 @@ router.put('/:id', tokenExtractor, async (req, res) => {
   const { id } = req.params;
   const userId = req.decodedToken.id;
   const entry = await ReadBlogs.findByPk(id);
+  const { read } = req.body;
 
   if (!entry) {
     return res.status(404).json({ error: 'Entry not found' });
@@ -30,7 +31,7 @@ router.put('/:id', tokenExtractor, async (req, res) => {
       .json({ error: 'You can only modify your own reading list' });
   }
 
-  entry.read = true;
+  entry.read = read;
 
   await entry.save();
 
