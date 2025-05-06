@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 
 const { SECRET } = require('../util/config');
+const { User, Session } = require('../models');
 
 const errorHandler = (error, _req, res, next) => {
   console.error(error.message);
@@ -21,14 +22,38 @@ const errorHandler = (error, _req, res, next) => {
   if (error.name === 'SequelizeForeignKeyConstraintError') {
     return res.status(404).json({ error: 'blog not found' });
   }
+
+  if (error.name === 'SequelizeUniqueConstraintError') {
+    return res.status(400).json({ error: 'username or email already in use' });
+  }
+
   next(error);
 };
 
-const tokenExtractor = (req, res, next) => {
+const tokenExtractor = async (req, res, next) => {
   const authorization = req.get('authorization');
   if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
     try {
-      req.decodedToken = jwt.verify(authorization.substring(7), SECRET);
+      const token = authorization.substring(7);
+
+      const sessionUser = await Session.findOne({
+        where: {
+          token
+        }
+      });
+
+      if (!sessionUser) {
+        return res.status(401).json({ error: 'invalid session' });
+      }
+
+      const decodedToken = jwt.verify(token, SECRET);
+      const userEnable = await User.findByPk(decodedToken.id);
+
+      if (!userEnable || userEnable.disabled) {
+        return res.status(401).json({ error: 'user disabled' });
+      }
+
+      req.decodedToken = decodedToken;
     } catch {
       return res.status(401).json({ error: 'token invalid' });
     }
